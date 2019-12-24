@@ -3,7 +3,7 @@
 #
 # Date Created: Dec 21,2019
 #
-# Last Modified: Mon Dec 23 19:41:57 2019
+# Last Modified: Tue Dec 24 05:48:26 2019
 #
 # Author: samolof
 #
@@ -16,15 +16,15 @@ from pathlib import Path
 import streamlit as st
 import numpy as np
 import pandas as pd
-from PIL import Image
 import os, requests, tempfile
+import urllib
 
 
 
 def download(fileName):
     filePath = tmpDir/fileName
     if os.path.exists(filePath):
-        if os.path.getsize(filePath) == TRAINING_MODELS[fileName][1]:
+        if os.path.getsize(filePath) == TRAINING_MODELS[fileName]:
             return
 
     warning, progressBar = None, None
@@ -32,21 +32,22 @@ def download(fileName):
         warning = st.warning("Downloading %s..." % fileName)
         progressBar = st.progress(0)
 
-        url = TRAINING_MODELS[fileName][0]
+        url = AWS_PREFIX + "/" + fileName
 
         with open(filePath, 'wb') as outfile:
-            with requests.get(url, stream=True) as r:
-                    r.raise_for_status()
-                    contentLength = len(r.content)
-                    counter = 0.0
+            
+            with urllib.request.urlopen(url) as response:
+                length = int(response.info()["Content-Length"])
+                counter =0.0
+                while True:
+                    data = response.read(8192)
+                    if not data: break
                     
-                    for data in r.iter_content(chunk_size=8192):
-                        if not data: break
-                        counter += len(data)
-                        outfile.write(data)
+                    counter += len(data)
+                    outfile.write(data)
 
-                        warning.warning("Downloading %s... (%6.2f/%6.2f MB)" % (fileName, counter, contentLength))
-                        progressBar.progress(min(counter/contentLength, 1.0))
+                    warning.warning("Downloading %s... (%6.2f/%6.2f Bytes)" % (fileName, counter, length))
+                    progressBar.progress(min(counter/length, 1.0))
     finally:
         if warning is not None:
             warning.empty()
@@ -62,13 +63,28 @@ def downloadImage(url):
         data = requests.get(url)
         imgData = data.content
         
-        tmpImgFile = tempfile.TemporaryFile(dir=tmpDir)
-        tmpImgFile.write(imgData)
-    
 
-        return (imgData, tmpImgFile)
+        return io.BytesIO(imgData)
     except:
         return None
+
+import io    
+def predict_image(img):
+
+    img = open_image(img)
+
+    models = list(TRAINING_MODELS.keys())
+    prelearner = load_learner(path/'.tmp', models[0]) 
+    learner = load_learner(path/'.tmp', models[1])
+
+    pred_class, pred_idx, outputs = prelearner.predict(img)
+    
+    if pred_class.__str__() == 'other':
+       return None
+    else:
+        pred_class, _, _ = learner.predict(img)
+        return pred_class
+
 
 
 IMAGE_WIDTH=400
@@ -76,49 +92,69 @@ path=Path.cwd()
 tmpDir= path/'.tmp'
 tmpDir.mkdir(exist_ok=True)
 
+AWS_PREFIX="https://javadevelopr865-fastai.s3-us-west-1.amazonaws.com"
+
 
 TRAINING_MODELS = {
-        "car_vs_other.pkl" : ["https://javadevelopr865-fastai.s3-us-west-1.amazonaws.com/car_vs_other.pkl", 87390512],
-        "trained_model.pkl": ["https://javadevelopr865-fastai.s3-us-west-1.amazonaws.com/trained_model.pkl",102802036]
+        "pre_train.pkl" : 102787490,
+        "trained_model.pkl": 102803581
+}
+
+car_class = {
+        'other' : 'Unkown model',
+        'model_x' : 'Tesla Model X',
+        'model_s' : 'Tesla Model S',
+        'model_3' : 'Tesla Model 3',
+        'taycan'  : 'Porsche Taycan',
+        'ff91'    : 'Faraday Future FF91',
+        'volt'    : 'Chevy Volt',
+        'bolt'   :  'Chevy Bolt',
+        'lucidair' : 'Lucid Air',
+        'fisker'  : 'Fisker Karma',
+        'rimac' : 'Rimac Concept 1/2'
 }
 
 correct = wrong = 0
 
 def main():
 
+    st.title('Tag That (Electric)Car')
 
-    st.title('Name That (Electric)Car')
-
-
+    img = imgFromFile = imgURL = None
     models = list(TRAINING_MODELS.keys())
 
-    with st.spinner('Downloading pre-trained model...'):
+    with st.spinner('Downloading training models ...'):
         for fileName in models:
             download(fileName)
 
 
+
     imgURL = st.text_input('Enter url for image:')
 
-    imgFile = st.sidebar.file_uploader('Upload image file(s):')
-    
-    testIfCar = load_learner(path/'.tmp', models[0]) 
-    learner = load_learner(path/'.tmp', models[1])
-
     if imgURL != None and imgURL !='':
-        img,imgFile = downloadImage(imgURL)
-        st.image(img, width=IMAGE_WIDTH)
-    
-        tmpImg = open_image(imgFile)
-        pred_class, pred_idx, outputs = testIfCar.predict(tmpImg)
-        
-        if pred_class.__str__() == 'other':
-           st.info("Image doesn't appear to contain a car. Try again.")
-           return
+        img = downloadImage(imgURL)
+
+   
+    else:
+        img = None
+        imgFromFile = st.file_uploader('Upload image file:')
+
+        if imgFromFile != None:
+            img = imgFromFile
+       
         else:
-            pred_class, _, _ = learner.predict(tmpImg)
-            st.write(pred_class)
+            st.text('No image yet')
+            return
 
+    try:
+        st.image(img,  use_column_width=True)
+        cl = predict_image(img)
 
+        if cl is not None:
+            st.info(car_class[cl.__str__()])
+        else:
+            st.info("File doesn't appear to be an image. Try again?")
+        
         option = st.selectbox(
             'Is this correct?',
             ('Yes', 'No')
@@ -130,12 +166,10 @@ def main():
         elif option == 'No':
             wrong += 1
 
-        #cprogress = st.progress(correct)
-        #wprogress = st.progress(wrong)
+    except:
+        st.error("Unable to load image. Are you sure this is an image file?")
+        return
 
-        imgFile.close()
-    else:
-        st.text('No image yet')
 
 if __name__=="__main__":
     main()
