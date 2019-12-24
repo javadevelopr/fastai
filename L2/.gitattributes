@@ -1,0 +1,2 @@
+models/car_vs_other.pkl filter=lfs diff=lfs merge=lfs -text
+models/trained_model.pkl filter=lfs diff=lfs merge=lfs -text
