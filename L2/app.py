@@ -3,7 +3,7 @@
 #
 # Date Created: Dec 21,2019
 #
-# Last Modified: Tue Dec 24 05:48:26 2019
+# Last Modified: Tue Dec 24 17:34:08 2019
 #
 # Author: samolof
 #
@@ -101,7 +101,7 @@ TRAINING_MODELS = {
 }
 
 car_class = {
-        'other' : 'Unkown model',
+        'other' : 'same old same old ICE machine 🙁: model unknown',
         'model_x' : 'Tesla Model X',
         'model_s' : 'Tesla Model S',
         'model_3' : 'Tesla Model 3',
@@ -119,6 +119,11 @@ correct = wrong = 0
 def main():
 
     st.title('Tag That (Electric)Car')
+    st.markdown("""
+        Upload an image of a car or a url of an image of car.
+I will try to guess if it's one of 9 popular electric car models.
+Image should contain only one car so I can give it my best shot.
+            """)
 
     img = imgFromFile = imgURL = None
     models = list(TRAINING_MODELS.keys())
@@ -151,9 +156,9 @@ def main():
         cl = predict_image(img)
 
         if cl is not None:
-            st.info(car_class[cl.__str__()])
+            st.success("I see a %s" % car_class[cl.__str__()])
         else:
-            st.info("File doesn't appear to be an image. Try again?")
+            st.info("The image doesn't seem to be an image of car. Try again?")
         
         option = st.selectbox(
             'Is this correct?',
@@ -167,9 +172,8 @@ def main():
             wrong += 1
 
     except:
-        st.error("Unable to load image. Are you sure this is an image file?")
+        st.error("Unable to load image. Are you sure this is an image file/URL?")
         return
-
 
 if __name__=="__main__":
     main()
