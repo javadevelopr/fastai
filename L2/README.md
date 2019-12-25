@@ -7,12 +7,12 @@ User should be able to enter an image url and get a predicted label, if the imag
 
 #### To Run:
 ```
-pip install --upgrade fastai streamlit
+pip install --upgrade torch torchvision fastai streamlit
 
 streamlit run app.py
 ```
 
-If you have [conda/miniconda](https://docs.conda.io/en/latest/) installed:
+#### If you have [conda/miniconda](https://docs.conda.io/en/latest/) installed:
 
 ```
 conda env create -f environment.yml
