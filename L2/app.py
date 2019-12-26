@@ -3,7 +3,7 @@
 #
 # Date Created: Dec 21,2019
 #
-# Last Modified: Wed Dec 25 22:48:24 2019
+# Last Modified: Thu Dec 26 14:58:23 2019
 #
 # Author: samolof
 #
@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import os, requests, tempfile
 import urllib, PIL
+import io    
 
 IMAGE_WIDTH=400
 path=Path.cwd()
@@ -50,7 +51,7 @@ WRONG_PNG = 'wrong.png'
 CORRECT_PNG= 'green_check.png'
 
 intro_text= """
-        Upload an image of a car or a url of an image of car.
+        Upload a file or image url of a car or.
 I will try to guess if it's one of 9 popular electric car models.
 Image should contain only one car so I can give it my best shot.
 
@@ -62,7 +63,6 @@ Make sure the url links to an actual image (E.g on google image search, right cl
 
 
 
-@st.cache
 def _pilImg(img):
     return PIL.Image.open(img)
 
@@ -140,7 +140,6 @@ def downloadImage(url):
     except:
         return None
 
-import io    
 def predict_image(img):
 
     img = open_image(img)
@@ -152,10 +151,16 @@ def predict_image(img):
     pred_class, pred_idx, outputs = prelearner.predict(img)
     
     if pred_class.__str__() == 'other':
-       return None
+        st.info("The image doesn't seem to be an image of a car. Try another image")
+        return None
     else:
         pred_class, _, _ = learner.predict(img)
-        return pred_class
+
+        return st.radio("Is this a %s?" % car_class[pred_class.__str__()],
+
+                ("Yes", "No", "Maybe"), index=2
+        )
+
 
 
 
@@ -178,7 +183,6 @@ def main():
 
     if imgURL != None and imgURL !='':
         img = downloadImage(imgURL)
-
    
     else:
         img = None
@@ -191,33 +195,21 @@ def main():
             st.text('No image yet')
             return
 
-    #try:
+    try:
+        correct_image = compositeImage(_pilImg(CORRECT_PNG), _pilImg(img))
+        wrong_image = compositeImage(_pilImg(WRONG_PNG), _pilImg(img))
 
+        imgFrame=st.image(img,  use_column_width=True)
+        cl = predict_image(img)
 
-    imgFrame=st.image(img,  use_column_width=True)
-    cl = predict_image(img)
-
-    if cl is not None:
-        st.success("I see a %s" % car_class[cl.__str__()])
-    else:
-        st.info("The image doesn't seem to be an image of car. Try again?")
-   
-
-
-    option = st.radio(
-            "Is this correct?",
-            ('Yes', 'No')
-    )
-
-
-    if option == 'Yes':
-        pass
-        #imgFrame.image(compositeImage(_pilImg(CORRECT_PNG), _pilImg(img)), use_column_width=True)
-    elif option == 'No':
-        imgFrame.image(compositeImage(_pilImg(WRONG_PNG), _pilImg(img)), use_column_width=True)  
-    #except:
-    #    st.error("Unable to load image. Are you sure this is an image file/URL?")
-    #    return
+        if cl is not None:
+            if cl == 'Yes':
+                imgFrame.image(correct_image, use_column_width=True)
+            if cl == 'No':
+                imgFrame.image(wrong_image, use_column_width=True)  
+    except:
+        st.error("Unable to load image. Are you sure this is an image file/URL?")
+        return
 
 if __name__=="__main__":
     main()
