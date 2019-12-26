@@ -3,7 +3,7 @@
 #
 # Date Created: Dec 21,2019
 #
-# Last Modified: Wed Dec 25 21:03:25 2019
+# Last Modified: Wed Dec 25 22:48:24 2019
 #
 # Author: samolof
 #
@@ -191,29 +191,33 @@ def main():
             st.text('No image yet')
             return
 
-    try:
-        if option is not None: option.empty()
-        imgFrame=st.image(img,  use_column_width=True)
-        cl = predict_image(img)
+    #try:
 
-        if cl is not None:
-            st.success("I see a %s" % car_class[cl.__str__()])
-        else:
-            st.info("The image doesn't seem to be an image of car. Try again?")
-        
-        option = st.selectbox(
-            'Is this correct?',
-            ('Yes', 'No'), index = 0
-        )
 
-        if option == 'Yes':
-            pass
-            #imgFrame.image(compositeImage(_pilImg(CORRECT_PNG), _pilImg(img)), use_column_width=True)
-        elif option == 'No':
-            imgFrame.image(compositeImage(_pilImg(WRONG_PNG), _pilImg(img)), use_column_width=True)  
-    except:
-        st.error("Unable to load image. Are you sure this is an image file/URL?")
-        return
+    imgFrame=st.image(img,  use_column_width=True)
+    cl = predict_image(img)
+
+    if cl is not None:
+        st.success("I see a %s" % car_class[cl.__str__()])
+    else:
+        st.info("The image doesn't seem to be an image of car. Try again?")
+   
+
+
+    option = st.radio(
+            "Is this correct?",
+            ('Yes', 'No')
+    )
+
+
+    if option == 'Yes':
+        pass
+        #imgFrame.image(compositeImage(_pilImg(CORRECT_PNG), _pilImg(img)), use_column_width=True)
+    elif option == 'No':
+        imgFrame.image(compositeImage(_pilImg(WRONG_PNG), _pilImg(img)), use_column_width=True)  
+    #except:
+    #    st.error("Unable to load image. Are you sure this is an image file/URL?")
+    #    return
 
 if __name__=="__main__":
     main()
