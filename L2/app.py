@@ -3,7 +3,7 @@
 #
 # Date Created: Dec 21,2019
 #
-# Last Modified: Wed Dec 25 16:40:57 2019
+# Last Modified: Wed Dec 25 21:03:25 2019
 #
 # Author: samolof
 #
@@ -17,7 +17,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import os, requests, tempfile
-import urllib
+import urllib, PIL
 
 IMAGE_WIDTH=400
 path=Path.cwd()
@@ -46,6 +46,8 @@ car_class = {
         'rimac' : 'Rimac Concept 1/2'
 }
 
+WRONG_PNG = 'wrong.png'
+CORRECT_PNG= 'green_check.png'
 
 intro_text= """
         Upload an image of a car or a url of an image of car.
@@ -56,7 +58,13 @@ You can find images on [Bing](https://www.bing.com/image) or [Google Image searc
 Make sure the url links to an actual image (E.g on google image search, right click on image and choose 'Copy Link Location')
 """
 
-correct = wrong = 0
+
+
+
+
+@st.cache
+def _pilImg(img):
+    return PIL.Image.open(img)
 
 
 def download(fileName):
@@ -94,7 +102,18 @@ def download(fileName):
 
 
 
+def compositeImage(fgImage, bgImage):
 
+    bw,bh = bgImage.size
+    fw,fh = fgImage.size
+
+    fgImage = fgImage.resize((min(bw,fw//2), min(bh,fh//2)))
+    offset = ( (bw - fgImage.size[0]) //2, (bh - fgImage.size[1]) // 2)
+    #offset=(0,0)
+    tmpImage = bgImage.copy()
+    tmpImage.paste(fgImage, offset, mask=fgImage)
+
+    return tmpImage
 
 
 #@st.cache
@@ -144,7 +163,8 @@ def main():
 
     st.title('Tag That (Electric)Car')
 
-    img = imgFromFile = imgURL = None
+    img = imgFromFile = imgURL = option =  None
+
     models = list(TRAINING_MODELS.keys())
 
     with st.spinner('Downloading training models ...'):
@@ -172,6 +192,7 @@ def main():
             return
 
     try:
+        if option is not None: option.empty()
         imgFrame=st.image(img,  use_column_width=True)
         cl = predict_image(img)
 
@@ -182,15 +203,14 @@ def main():
         
         option = st.selectbox(
             'Is this correct?',
-            ('Yes', 'No')
+            ('Yes', 'No'), index = 0
         )
 
-        global correct, wrong
         if option == 'Yes':
-            correct += 1
+            pass
+            #imgFrame.image(compositeImage(_pilImg(CORRECT_PNG), _pilImg(img)), use_column_width=True)
         elif option == 'No':
-            wrong += 1
-            imgFrame.empty()
+            imgFrame.image(compositeImage(_pilImg(WRONG_PNG), _pilImg(img)), use_column_width=True)  
     except:
         st.error("Unable to load image. Are you sure this is an image file/URL?")
         return
