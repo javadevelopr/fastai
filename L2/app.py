@@ -3,7 +3,7 @@
 #
 # Date Created: Dec 21,2019
 #
-# Last Modified: Tue Dec 24 17:34:08 2019
+# Last Modified: Wed Dec 25 16:40:57 2019
 #
 # Author: samolof
 #
@@ -19,6 +19,44 @@ import pandas as pd
 import os, requests, tempfile
 import urllib
 
+IMAGE_WIDTH=400
+path=Path.cwd()
+tmpDir= path/'.tmp'
+tmpDir.mkdir(exist_ok=True)
+
+AWS_PREFIX="https://javadevelopr865-fastai.s3-us-west-1.amazonaws.com"
+
+
+TRAINING_MODELS = {
+        "pre_train.pkl" : 102787490,
+        "trained_model.pkl": 102803581
+}
+
+car_class = {
+        'other' : 'ICE clunker 😷 🏭, model unknown',
+        'model_x' : 'Tesla Model X',
+        'model_s' : 'Tesla Model S',
+        'model_3' : 'Tesla Model 3',
+        'taycan'  : 'Porsche Taycan',
+        'ff91'    : 'Faraday Future FF91',
+        'volt'    : 'Chevy Volt',
+        'bolt'   :  'Chevy Bolt',
+        'lucidair' : 'Lucid Air',
+        'fisker'  : 'Fisker Karma',
+        'rimac' : 'Rimac Concept 1/2'
+}
+
+
+intro_text= """
+        Upload an image of a car or a url of an image of car.
+I will try to guess if it's one of 9 popular electric car models.
+Image should contain only one car so I can give it my best shot.
+
+You can find images on [Bing](https://www.bing.com/image) or [Google Image search](https://images.google.com).
+Make sure the url links to an actual image (E.g on google image search, right click on image and choose 'Copy Link Location')
+"""
+
+correct = wrong = 0
 
 
 def download(fileName):
@@ -57,10 +95,25 @@ def download(fileName):
 
 
 
+
+
 #@st.cache
 def downloadImage(url):
+
+    def _imageURLFromURL(url):
+        """Extract the image url from the url for Bing and Google image search"""
+        from urllib.parse import unquote
+        try:
+            query = url.split('&')
+            a=list(filter(lambda x: len(x) ==2, map(lambda x: x.split('='), query)))
+            return list(map(lambda x: urllib.parse.unquote(x[1]), filter(lambda x: 'imgurl' in x[0] or 'mediaurl' in x[0],a)))[0]
+        except:
+            return url
+        return url
+
+
     try:
-        data = requests.get(url)
+        data = requests.get(_imageURLFromURL(url))
         imgData = data.content
         
 
@@ -87,43 +140,9 @@ def predict_image(img):
 
 
 
-IMAGE_WIDTH=400
-path=Path.cwd()
-tmpDir= path/'.tmp'
-tmpDir.mkdir(exist_ok=True)
-
-AWS_PREFIX="https://javadevelopr865-fastai.s3-us-west-1.amazonaws.com"
-
-
-TRAINING_MODELS = {
-        "pre_train.pkl" : 102787490,
-        "trained_model.pkl": 102803581
-}
-
-car_class = {
-        'other' : 'same old same old ICE machine 🙁: model unknown',
-        'model_x' : 'Tesla Model X',
-        'model_s' : 'Tesla Model S',
-        'model_3' : 'Tesla Model 3',
-        'taycan'  : 'Porsche Taycan',
-        'ff91'    : 'Faraday Future FF91',
-        'volt'    : 'Chevy Volt',
-        'bolt'   :  'Chevy Bolt',
-        'lucidair' : 'Lucid Air',
-        'fisker'  : 'Fisker Karma',
-        'rimac' : 'Rimac Concept 1/2'
-}
-
-correct = wrong = 0
-
 def main():
 
     st.title('Tag That (Electric)Car')
-    st.markdown("""
-        Upload an image of a car or a url of an image of car.
-I will try to guess if it's one of 9 popular electric car models.
-Image should contain only one car so I can give it my best shot.
-            """)
 
     img = imgFromFile = imgURL = None
     models = list(TRAINING_MODELS.keys())
@@ -133,6 +152,7 @@ Image should contain only one car so I can give it my best shot.
             download(fileName)
 
 
+    st.markdown(intro_text)
 
     imgURL = st.text_input('Enter url for image:')
 
@@ -152,7 +172,7 @@ Image should contain only one car so I can give it my best shot.
             return
 
     try:
-        st.image(img,  use_column_width=True)
+        imgFrame=st.image(img,  use_column_width=True)
         cl = predict_image(img)
 
         if cl is not None:
@@ -170,7 +190,7 @@ Image should contain only one car so I can give it my best shot.
             correct += 1
         elif option == 'No':
             wrong += 1
-
+            imgFrame.empty()
     except:
         st.error("Unable to load image. Are you sure this is an image file/URL?")
         return
