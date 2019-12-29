@@ -3,7 +3,7 @@
 #
 # Date Created: Dec 21,2019
 #
-# Last Modified: Sun Dec 29 04:06:56 2019
+# Last Modified: Sun Dec 29 10:50:44 2019
 #
 # Author: samolof
 #
@@ -117,7 +117,7 @@ def compositeImage(fgImage, bgImage):
 
 
 #@st.cache
-def downloadImage(url):
+def downloadImageFromURL(url):
 
     def _imageURLFromURL(url):
         """Extract the image url from the url for Bing and Google image search"""
@@ -141,10 +141,11 @@ def downloadImage(url):
         return None
 
 def decodeImageFromBase64(imgStr):
+    imgStr = imgStr.split(',')
+    if len(imgStr) < 2: return None
 
-    imgAsBytes = str.encode(imgStr)
-    i64 = base64.decodebytes(imgAsBytes)
-    return io.BytesIO(i64)
+    return io.BytesIO(base64.standard_b64decode(imgStr[1]))
+
 
 def predict_image(img):
 
@@ -189,12 +190,10 @@ def main():
 
     if imgURL != None and imgURL !='':
         if imgURL.startswith('data:image'):
-            imgBase64 = imgURL.split(',')
-            if len(imgBase64) > 1:
-                img = decodeImageFromBase64(imgBase64[1])
+            img = decodeImageFromBase64(imgURL)
 
         else:
-            img = downloadImage(imgURL)
+            img = downloadImageFromURL(imgURL)
    
     else:
         img = None
