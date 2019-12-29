@@ -3,7 +3,7 @@
 #
 # Date Created: Dec 21,2019
 #
-# Last Modified: Thu Dec 26 14:58:23 2019
+# Last Modified: Sun Dec 29 04:06:56 2019
 #
 # Author: samolof
 #
@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import os, requests, tempfile
 import urllib, PIL
-import io    
+import io, base64    
 
 IMAGE_WIDTH=400
 path=Path.cwd()
@@ -140,6 +140,12 @@ def downloadImage(url):
     except:
         return None
 
+def decodeImageFromBase64(imgStr):
+
+    imgAsBytes = str.encode(imgStr)
+    i64 = base64.decodebytes(imgAsBytes)
+    return io.BytesIO(i64)
+
 def predict_image(img):
 
     img = open_image(img)
@@ -182,7 +188,13 @@ def main():
     imgURL = st.text_input('Enter url for image:')
 
     if imgURL != None and imgURL !='':
-        img = downloadImage(imgURL)
+        if imgURL.startswith('data:image'):
+            imgBase64 = imgURL.split(',')
+            if len(imgBase64) > 1:
+                img = decodeImageFromBase64(imgBase64[1])
+
+        else:
+            img = downloadImage(imgURL)
    
     else:
         img = None
